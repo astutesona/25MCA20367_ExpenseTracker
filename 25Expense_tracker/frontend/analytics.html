@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Analytics — Smart Expense Tracker</title>
+<link rel="stylesheet" href="/styles.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+<style>
+html,body{height:100%;overflow:hidden;}
+.chart-container { position: relative; height: 320px; width: 100%; }
+.insights-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 24px; }
+.insight-card {
+  background: #FFFFFF; border: 1px solid var(--border-glass);
+  border-radius: var(--r-lg); padding: 24px; display: flex; align-items: center; gap: 20px;
+  box-shadow: var(--shadow-sm); transition: all var(--med);
+}
+.insight-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); border-color: var(--choc-400); }
+.insight-icon { font-size: 32px; width: 56px; height: 56px; background: #FAF6F2; border-radius: 16px; display: flex; align-items: center; justify-content: center; }
+.insight-data div:first-child { font-size: 24px; font-weight: 800; color: var(--choc-800); font-family: 'Space Grotesk', sans-serif; }
+.insight-data div:last-child  { font-size: 12px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+
+.charts-grid { display: grid; grid-template-columns: 1fr 1.5fr; gap: 24px; }
+</style>
+</head>
+<body>
+<div class="app-layout">
+  <div id="sidebar-root"></div>
+  <main class="main-content">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">Financial Analytics</div>
+        <div class="topbar-sub">Analyze your income, spending habits, and savings efficiency</div>
+      </div>
+      <div class="topbar-actions">
+        <a href="/dashboard.html" class="btn btn-ghost btn-sm">← Overview</a>
+      </div>
+    </div>
+
+    <div class="page-content">
+      <div class="insights-row fade-in-up s1">
+        <div class="insight-card">
+          <div class="insight-icon">🏦</div>
+          <div class="insight-data">
+            <div id="ins-income">₹0.00</div>
+            <div>Gross Income</div>
+          </div>
+        </div>
+        <div class="insight-card">
+          <div class="insight-icon">💸</div>
+          <div class="insight-data">
+            <div id="ins-expense">₹0.00</div>
+            <div>Total Expenses</div>
+          </div>
+        </div>
+        <div class="insight-card">
+          <div class="insight-icon">📈</div>
+          <div class="insight-data">
+            <div id="ins-rate">0%</div>
+            <div>Savings Rate</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="charts-grid">
+        <div class="card fade-in-up s2">
+          <div class="section-title">🍩 Category Allocation</div>
+          <div class="chart-container"><canvas id="donut-chart"></canvas></div>
+          <div class="divider"></div>
+          <div id="cat-legend" class="flex-col g8"></div>
+        </div>
+
+        <div class="card fade-in-up s3">
+          <div class="section-title">📊 Monthly Performance</div>
+          <div class="chart-container" style="height: 400px;"><canvas id="bar-chart"></canvas></div>
+        </div>
+      </div>
+
+      <div class="card mt24 fade-in-up s4">
+        <div class="section-title">🎯 Efficiency Progress</div>
+        <div class="flex ac g24">
+          <div style="flex:1">
+            <div class="flex jb mb8">
+              <span class="text-sm fw6">Current Savings Milestone</span>
+              <span class="text-sm fw8" id="savings-pct">0%</span>
+            </div>
+            <div class="progress-bar"><div class="progress-fill" id="savings-bar" style="width:0%"></div></div>
+          </div>
+          <div style="text-align:right">
+            <div class="fw8" id="savings-val" style="font-size:24px; color:var(--choc-800); font-family:'Space Grotesk',sans-serif;">₹0.00</div>
+            <div class="text-xs op70 fw6">Net Savings Accumulation</div>
+          </div>
+        </div>
+      </div>
+      <footer class="app-footer">
+        <div class="footer-text">© 2024 Smart Expense Tracker</div>
+        <div class="footer-tag">Personal Finance Management System</div>
+      </footer>
+    </div>
+  </main>
+</div>
+
+<div id="toasts"></div>
+<script src="/app.js"></script>
+<script>
+initPage('analytics');
+
+const CHOC_PALETTE = [
+  '#2C1206', '#3D1A0A', '#4A2010', '#5C2D0E', '#6B4226',
+  '#7C3E18', '#8B5E3C', '#A07848', '#C4956A'
+];
+
+async function loadAnalytics() {
+  const res = await api.get('/api/stats');
+  if (res.success) {
+    const { totalIncome, totalExpense, savings, categoryBreakdown, monthlyData } = res;
+    
+    animateCounter(document.getElementById('ins-income'), totalIncome);
+    animateCounter(document.getElementById('ins-expense'), totalExpense);
+    const rate = totalIncome > 0 ? Math.round((savings / totalIncome) * 100) : 0;
+    document.getElementById('ins-rate').textContent = rate + '%';
+    
+    document.getElementById('savings-pct').textContent = rate + '%';
+    document.getElementById('savings-val').textContent = fmtCurrency(savings);
+    setTimeout(() => { document.getElementById('savings-bar').style.width = Math.min(Math.max(rate, 0), 100) + '%'; }, 300);
+
+    // Donut
+    if (categoryBreakdown && categoryBreakdown.length) {
+      const labels = categoryBreakdown.map(c => c.category);
+      const data = categoryBreakdown.map(c => c.amount);
+      new Chart(document.getElementById('donut-chart'), {
+        type: 'doughnut',
+        data: {
+          labels,
+          datasets: [{
+            data,
+            backgroundColor: CHOC_PALETTE,
+            borderColor: '#FFFFFF',
+            borderWidth: 2,
+            hoverOffset: 12
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false, cutout: '70%',
+          plugins: { legend: { display: false } }
+        }
+      });
+      
+      const total = data.reduce((a,b)=>a+b, 0);
+      document.getElementById('cat-legend').innerHTML = labels.map((l, i) => `
+        <div class="flex ac jb">
+          <div class="flex ac g8">
+            <span style="width:10px; height:10px; border-radius:3px; background:${CHOC_PALETTE[i%CHOC_PALETTE.length]}"></span>
+            <span class="text-sm fw6">${catIco(l)} ${l}</span>
+          </div>
+          <span class="text-sm op70">${Math.round(data[i]/total*100)}%</span>
+        </div>
+      `).join('');
+    } else {
+      document.getElementById('donut-chart').parentElement.innerHTML = '<div class="empty-state">No data for chart.</div>';
+    }
+
+    // Bar
+    if (monthlyData && monthlyData.length) {
+      new Chart(document.getElementById('bar-chart'), {
+        type: 'bar',
+        data: {
+          labels: monthlyData.map(m => fmtMonth(m.month)),
+          datasets: [
+            { label: 'Income', data: monthlyData.map(m=>m.income), backgroundColor: '#8B5E3C', borderRadius: 6 },
+            { label: 'Expense', data: monthlyData.map(m=>m.expense), backgroundColor: '#3D1A0A', borderRadius: 6 }
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          scales: {
+            x: { grid: { display: false } },
+            y: { ticks: { callback: v => '₹'+v.toLocaleString() } }
+          }
+        }
+      });
+    }
+  }
+}
+
+loadAnalytics();
+</script>
+</body>
+</html>

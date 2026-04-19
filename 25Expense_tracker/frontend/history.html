@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>History — Smart Expense Tracker</title>
+<link rel="stylesheet" href="/styles.css">
+<style>
+html,body{height:100%;overflow:hidden;}
+.table-container { overflow-x: auto; width: 100%; }
+.action-group { display: flex; gap: 8px; justify-content: flex-end; }
+</style>
+</head>
+<body>
+<div class="app-layout">
+  <div id="sidebar-root"></div>
+  <main class="main-content">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">Transaction History</div>
+        <div class="topbar-sub" id="record-count">Monitoring your past records...</div>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost btn-sm" onclick="exportData()">📦 Export</button>
+        <a href="/add_transaction.html" class="btn btn-primary btn-sm">✨ Add New</a>
+      </div>
+    </div>
+
+    <div class="page-content">
+      <div class="card mb24 fade-in-up s1">
+        <div class="filters-bar">
+          <div class="search-wrap">
+            <span class="search-ico">🔍</span>
+            <input type="text" class="search-inp" id="search-inp" placeholder="Search records..." oninput="filterData()">
+          </div>
+          <select id="sel-type" class="form-control" style="width:140px;" onchange="filterData()">
+            <option value="">All Types</option>
+            <option value="income">Income</option>
+            <option value="expense">Expense</option>
+          </select>
+          <select id="sel-cat" class="form-control" style="width:140px;" onchange="filterData()">
+            <option value="">All Categories</option>
+          </select>
+          <button class="btn btn-ghost btn-sm" onclick="resetFilters()">Reset</button>
+        </div>
+      </div>
+
+      <div class="card fade-in-up s2" style="padding: 10px;">
+        <div class="table-container">
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th>Type</th>
+                <th>Amount</th>
+                <th>Category</th>
+                <th>Description</th>
+                <th>Date</th>
+                <th style="text-align:right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="tx-table">
+              <tr><td colspan="6"><div class="empty-state">Loading...</div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <footer class="app-footer">
+        <div class="footer-text">© 2024 Smart Expense Tracker</div>
+        <div class="footer-tag">Personal Finance Management System</div>
+      </footer>
+    </div>
+  </main>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal-box">
+    <div class="section-title">✏️ Edit Record</div>
+    <input type="hidden" id="edit-id">
+    <div class="form-group">
+      <label class="form-label">Type</label>
+      <div class="type-toggle">
+        <button type="button" class="type-btn" id="edit-btn-inc" onclick="setEditType('income')">Income</button>
+        <button type="button" class="type-btn" id="edit-btn-exp" onclick="setEditType('expense')">Expense</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Amount</label>
+      <input type="number" id="edit-amount" class="form-control">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Category</label>
+      <select id="edit-cat" class="form-control"></select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Description</label>
+      <input type="text" id="edit-desc" class="form-control">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Date</label>
+      <input type="date" id="edit-date" class="form-control">
+    </div>
+    <div class="flex g12 mt20">
+      <button class="btn btn-primary w-full" onclick="saveEdit()">Apply Changes</button>
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div id="toasts"></div>
+<script src="/app.js"></script>
+<script>
+initPage('history');
+
+const sCat = document.getElementById('sel-cat');
+const eCat = document.getElementById('edit-cat');
+CATS.forEach(c => {
+  const o = new Option(c.ico+' '+c.name, c.name);
+  sCat.add(o.cloneNode(true));
+  eCat.add(o.cloneNode(true));
+});
+
+let cache = [];
+let curEditType = 'expense';
+
+async function loadData() {
+  const res = await api.get('/api/transactions');
+  if (res.success) {
+    cache = res.transactions || [];
+    render(cache);
+  }
+}
+
+function render(data) {
+  document.getElementById('record-count').textContent = `${data.length} records found`;
+  const b = document.getElementById('tx-table');
+  if (!data.length) {
+    b.innerHTML = '<tr><td colspan="6"><div class="empty-state">No records found.</div></td></tr>';
+    return;
+  }
+  b.innerHTML = data.map(t => `
+    <tr>
+      <td><span class="badge badge-${t.type}">${t.type==='income'?'📈':'📉'} ${t.type}</span></td>
+      <td class="${t.type==='income'?'amt-positive':'amt-negative'}">${fmtCurrency(t.amount)}</td>
+      <td><span class="badge-cat">${catIco(t.category)} ${t.category}</span></td>
+      <td><span class="text-sm op70">${t.description||'—'}</span></td>
+      <td class="text-sm">${fmtDate(t.date)}</td>
+      <td>
+        <div class="action-group">
+          <button class="btn btn-ghost btn-icon-sm" onclick="openEdit(${t.id})">✏️</button>
+          <button class="btn btn-ghost btn-icon-sm" style="color:#B05050" onclick="deleteRecord(${t.id})">🗑️</button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function filterData() {
+  const s = document.getElementById('search-inp').value.toLowerCase();
+  const t = document.getElementById('sel-type').value;
+  const c = document.getElementById('sel-cat').value;
+  render(cache.filter(x =>
+    (!s || x.description.toLowerCase().includes(s) || x.category.toLowerCase().includes(s)) &&
+    (!t || x.type === t) &&
+    (!c || x.category === c)
+  ));
+}
+
+function resetFilters() {
+  document.getElementById('search-inp').value = '';
+  document.getElementById('sel-type').value = '';
+  document.getElementById('sel-cat').value = '';
+  render(cache);
+}
+
+function openEdit(id) {
+  const t = cache.find(x => x.id === id);
+  if (!t) return;
+  document.getElementById('edit-id').value = id;
+  document.getElementById('edit-amount').value = t.amount;
+  document.getElementById('edit-cat').value = t.category;
+  document.getElementById('edit-desc').value = t.description;
+  document.getElementById('edit-date').value = t.date;
+  setEditType(t.type);
+  document.getElementById('edit-modal').classList.add('open');
+}
+
+function setEditType(t) {
+  curEditType = t;
+  document.getElementById('edit-btn-inc').classList.toggle('active', t==='income');
+  document.getElementById('edit-btn-inc').classList.toggle('income', t==='income');
+  document.getElementById('edit-btn-exp').classList.toggle('active', t==='expense');
+  document.getElementById('edit-btn-exp').classList.toggle('expense', t==='expense');
+}
+
+function closeModal() { document.getElementById('edit-modal').classList.remove('open'); }
+
+async function saveEdit() {
+  const id = parseInt(document.getElementById('edit-id').value);
+  const res = await api.put('/api/transactions/'+id, {
+    type: curEditType,
+    amount: parseFloat(document.getElementById('edit-amount').value),
+    category: document.getElementById('edit-cat').value,
+    description: document.getElementById('edit-desc').value,
+    date: document.getElementById('edit-date').value
+  });
+  if (res.success) { showToast('Updated successfully', 'success'); closeModal(); loadData(); }
+}
+
+async function deleteRecord(id) {
+  if (confirm('Delete this record?')) {
+    const res = await api.delete('/api/transactions/'+id);
+    if (res.success) { showToast('Removed successfully', 'success'); loadData(); }
+  }
+}
+
+function exportData() {
+  const rows = [['Type','Amount','Category','Desc','Date']];
+  cache.forEach(t => rows.push([t.type, t.amount, t.category, t.description, t.date]));
+  const csv = rows.map(r => r.join(',')).join('\n');
+  const b = new Blob([csv], {type:'text/csv'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(b);
+  a.download = 'finance_export.csv'; a.click();
+}
+
+loadData();
+</script>
+</body>
+</html>

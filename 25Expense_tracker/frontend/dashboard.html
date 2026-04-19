@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dashboard — Smart Expense Tracker</title>
+<link rel="stylesheet" href="/styles.css">
+<style>
+html,body{height:100%;overflow:hidden;}
+.dash-hero {
+  background: #FFFFFF;
+  border: 1px solid var(--border-glass);
+  border-radius: var(--r-lg); padding: 30px; margin-bottom: 24px;
+  display: flex; align-items: center; justify-content: space-between;
+  box-shadow: var(--shadow-sm);
+}
+.hero-text h2 {
+  font-size: 24px; font-weight: 800; color: var(--choc-800); margin-bottom: 6px;
+  font-family: 'Playfair Display', serif;
+}
+.hero-text p  { font-size: 14px; color: var(--text-muted); }
+.hero-img     { font-size: 64px; }
+
+.section-grid { display: grid; grid-template-columns: 1.25fr 0.75fr; gap: 24px; }
+</style>
+</head>
+<body>
+<div class="app-layout">
+  <div id="sidebar-root"></div>
+  <main class="main-content">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">Overview</div>
+        <div class="topbar-sub" id="date-str"></div>
+      </div>
+      <div class="topbar-actions">
+        <a href="/add_transaction.html" class="btn btn-primary btn-sm">✨ Add Record</a>
+      </div>
+    </div>
+
+    <div class="page-content">
+      <div class="dash-hero fade-in-up s1">
+        <div class="hero-text">
+          <h2>Hello, <span id="uname"></span></h2>
+          <p>Monitor your cash flow and track every transaction with precision.</p>
+        </div>
+        <div class="hero-img">💼</div>
+      </div>
+
+      <div class="grid-4 mb24">
+        <div class="card stat-card income-card fade-in-up s2">
+          <div class="stat-icon i-income">📉</div>
+          <div class="stat-label">Total Income</div>
+          <div class="stat-value v-income" id="s-income">₹0.00</div>
+          <div class="stat-note">Earned so far</div>
+        </div>
+        <div class="card stat-card expense-card fade-in-up s3">
+          <div class="stat-icon i-expense">📈</div>
+          <div class="stat-label">Total Expenses</div>
+          <div class="stat-value v-expense" id="s-expense">₹0.00</div>
+          <div class="stat-note">Spent so far</div>
+        </div>
+        <div class="card stat-card balance-card fade-in-up s4">
+          <div class="stat-icon i-balance">⚖️</div>
+          <div class="stat-label">Net Balance</div>
+          <div class="stat-value v-balance" id="s-balance">₹0.00</div>
+          <div class="stat-note">Current holding</div>
+        </div>
+        <div class="card stat-card savings-card fade-in-up s5">
+          <div class="stat-icon i-savings">🌰</div>
+          <div class="stat-label">Monthly Savings</div>
+          <div class="stat-value v-savings" id="s-savings">₹0.00</div>
+          <div class="stat-note">Saved this month</div>
+        </div>
+      </div>
+
+      <div class="section-grid">
+        <div class="card fade-in-up s3">
+          <div class="section-title">
+            📋 Recent Activity
+            <a href="/history.html" class="btn btn-ghost btn-sm ml-auto">View All</a>
+          </div>
+          <div id="recent-list">
+            <div class="empty-state">
+              <div class="empty-state-icon">📄</div>
+              <div class="empty-state-text">No activity recorded yet.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex-col g16 fade-in-up s4">
+          <div class="card">
+            <div class="section-title">⚡ Quick Management</div>
+            <div class="flex-col g8">
+              <a href="/add_transaction.html?type=income" class="quick-action">
+                <div class="quick-action-icon" style="background:#FAF6F2">💰</div>
+                <div><div class="qa-title">Record Income</div><div class="qa-sub">Log received funds</div></div>
+              </a>
+              <a href="/add_transaction.html?type=expense" class="quick-action">
+                <div class="quick-action-icon" style="background:#FAF6F2">💸</div>
+                <div><div class="qa-title">Record Expense</div><div class="qa-sub">Log spent funds</div></div>
+              </a>
+              <a href="/analytics.html" class="quick-action">
+                <div class="quick-action-icon" style="background:#FAF6F2">📊</div>
+                <div><div class="qa-title">Financial Analytics</div><div class="qa-sub">View detailed spending reports</div></div>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+      <footer class="app-footer">
+        <div class="footer-text">© 2024 Smart Expense Tracker</div>
+        <div class="footer-tag">Personal Finance Management System</div>
+      </footer>
+    </div>
+  </main>
+</div>
+
+<div id="toasts"></div>
+<script src="/app.js"></script>
+<script>
+initPage('dashboard');
+(function(){
+  const now = new Date();
+  document.getElementById('date-str').textContent  = now.toLocaleDateString('en-IN',{weekday:'long', day:'numeric', month:'long', year:'numeric'});
+})();
+
+async function loadDashboard() {
+  try {
+    const [stats, txData] = await Promise.all([api.get('/api/stats'), api.get('/api/transactions')]);
+    if (stats.success) {
+      document.getElementById('uname').textContent = stats.username || getUsername();
+      animateCounter(document.getElementById('s-income'),  stats.totalIncome);
+      animateCounter(document.getElementById('s-expense'), stats.totalExpense);
+      animateCounter(document.getElementById('s-balance'), stats.balance);
+      animateCounter(document.getElementById('s-savings'), stats.savings);
+    }
+    if (txData.success && txData.transactions && txData.transactions.length > 0) {
+      document.getElementById('recent-list').innerHTML = txData.transactions.slice(0,5).map(tx => `
+        <div class="tx-row">
+          <div class="tx-ico">${catIco(tx.category)}</div>
+          <div class="tx-info">
+            <div class="tx-cat">${tx.category}</div>
+            <div class="tx-desc">${tx.description||'No description'}</div>
+          </div>
+          <div class="tx-right">
+            <div class="tx-amount ${tx.type==='income'?'amt-positive':'amt-negative'}">
+              ${tx.type==='income'?'+':'-'}${fmtCurrency(tx.amount)}
+            </div>
+            <div class="tx-date">${fmtDate(tx.date)}</div>
+          </div>
+        </div>
+      `).join('');
+    }
+  } catch(e) { console.error(e); }
+}
+loadDashboard();
+</script>
+</body>
+</html>

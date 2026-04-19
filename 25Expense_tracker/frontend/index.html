@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Smart Expense Tracker — Login</title>
+<link rel="stylesheet" href="/styles.css">
+<style>
+html, body { overflow: hidden; height: 100%; }
+
+/* Clean Choc-White BG */
+.l-bg {
+  position: fixed; inset: 0;
+  background: #FAF6F2;
+  z-index: -3;
+}
+.l-bg-img {
+  position: fixed; inset: 0;
+  background: url('/images/finance_bg.png') center/cover no-repeat;
+  opacity: 0.8; z-index: -2;
+}
+
+/* Wrapper */
+.l-page { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px; }
+
+/* Card */
+.l-card {
+  display:flex; width:920px; max-width:100%; min-height:580px;
+  border-radius:30px; overflow:hidden;
+  box-shadow: 0 30px 90px rgba(60, 25, 10, 0.12);
+  border: 1px solid rgba(74, 32, 16, 0.1);
+  background: #FFFFFF;
+  animation: fadeInUp 0.65s cubic-bezier(0.4,0,0.2,1) both;
+}
+
+/* Left Panel */
+.l-left {
+  flex:1; min-width:0;
+  background: #3D1A0A;
+  padding: 44px 40px; position:relative; overflow:hidden;
+  display:flex; flex-direction:column; justify-content:space-between;
+  color: #FFFFFF;
+}
+
+.l-brand { display:flex;align-items:center;gap:14px; position:relative;z-index:1; }
+.l-brand-ico {
+  width:54px;height:54px;border-radius:16px; font-size:26px;
+  background: #FFFFFF;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+}
+.l-brand-name {
+  font-size:17px;font-weight:900;color:#FFFFFF;line-height:1.2;
+  font-family:'Playfair Display',serif;
+}
+.l-brand-name span { display:block;font-size:11px;font-weight:400;color:rgba(255,255,255,0.5);font-family:'Inter',sans-serif; }
+
+.l-left-body  { position:relative;z-index:1; }
+.l-hero-title { font-size:36px;font-weight:900;color:#FFFFFF;line-height:1.18;margin-bottom:14px;font-family:'Playfair Display',serif; }
+.l-hero-desc  { font-size:13.5px;color:rgba(255,255,255,0.7);line-height:1.7;margin-bottom:30px; }
+
+.l-features { list-style:none;display:flex;flex-direction:column;gap:11px; }
+.l-feat { display:flex;align-items:center;gap:10px;font-size:13px;color:rgba(255,255,255,0.8); }
+.l-feat-dot {
+  width:8px;height:8px;border-radius:50%;background:#FFFFFF;flex-shrink:0;
+}
+
+.l-stats { display:flex;gap:32px; position:relative;z-index:1; }
+.l-stat-num   { font-size:24px;font-weight:900;color:#FFFFFF;font-family:'Space Grotesk',sans-serif; }
+.l-stat-label { font-size:11px;color:rgba(255,255,255,0.5); }
+
+/* Right Panel */
+.l-right {
+  width:400px; min-width:360px;
+  background:#FFFFFF;
+  padding:44px 38px; display:flex;flex-direction:column;justify-content:center;
+}
+.l-title    { font-size:26px;font-weight:900;color:#3D1A0A;margin-bottom:6px;font-family:'Playfair Display',serif; }
+.l-subtitle { font-size:13.5px;color:#8B4513;margin-bottom:30px; }
+
+/* Tab switcher */
+.auth-tabs {
+  display:flex; background:#FAF6F2;
+  border:1px solid rgba(74, 32, 16, 0.1);
+  border-radius:12px; padding:4px; gap:4px; margin-bottom:26px;
+}
+.a-tab {
+  flex:1; padding:8px; text-align:center; font-size:13.5px; font-weight:700;
+  color:#8B4513; cursor:pointer; border-radius:8px; transition:all 0.25s;
+}
+.a-tab.active { background:#3D1A0A; color:#FFFFFF; box-shadow:0 4px 12px rgba(61, 26, 10, 0.2); }
+
+/* Inputs */
+.l-form .form-group { margin-bottom:16px; }
+.li-wrap  { position:relative; }
+.li-icon  { position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:16px;color:#8B4513;pointer-events:none; }
+.l-input  {
+  width:100%;padding:12px 14px 12px 42px;
+  background:#FAF6F2;
+  border:1px solid rgba(74, 32, 16, 0.1);
+  border-radius:10px;color:#2C1206;font-size:13.5px;font-family:inherit;transition:all 0.25s;
+}
+.l-input:focus {
+  outline:none;border-color:#3D1A0A;
+  background:#FFFFFF;
+  box-shadow:0 0 0 3px rgba(61, 26, 10, 0.05);
+}
+.l-input::placeholder { color:#B07848; }
+
+/* Submit Button */
+.l-btn {
+  width:100%;padding:14px;
+  background:#3D1A0A;
+  border:none;border-radius:11px;
+  color:#FFFFFF;font-size:15px;font-weight:700;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  transition:all 0.3s;margin-top:4px;
+}
+.l-btn:hover { background:#2C1206; transform:translateY(-2px);box-shadow:0 8px 24px rgba(61, 26, 10, 0.25); }
+.l-btn:active { transform:none; }
+.l-btn:disabled { opacity:0.6;cursor:not-allowed; }
+
+.l-footer { text-align:center;margin-top:18px;font-size:13px;color:#6B4226; }
+.l-footer a { color:#3D1A0A;font-weight:700; }
+</style>
+</head>
+<body>
+<div class="l-bg"></div>
+<div class="l-bg-img"></div>
+
+<div class="l-page">
+  <div class="l-card">
+    <div class="l-left">
+      <div class="l-brand">
+        <div class="l-brand-ico">🍫</div>
+        <div class="l-brand-name">Smart Expense<span>Tracker Pro</span></div>
+      </div>
+      <div class="l-left-body">
+        <h1 class="l-hero-title">Refined Finance<br>Management</h1>
+        <p class="l-hero-desc">
+          Experience a calm and elegant way to track your expenses.
+          Minimal. Classy. Professional.
+        </p>
+        <ul class="l-features">
+          <li class="l-feat"><div class="l-feat-dot"></div>Clean and attractive dashboard</li>
+          <li class="l-feat"><div class="l-feat-dot"></div>Elegant transaction tracking</li>
+          <li class="l-feat"><div class="l-feat-dot"></div>Premium reporting tools</li>
+          <li class="l-feat"><div class="l-feat-dot"></div>Secure and localized storage</li>
+        </ul>
+      </div>
+      <div class="l-stats">
+        <div><div class="l-stat-num">9+</div><div class="l-stat-label">Categories</div></div>
+        <div><div class="l-stat-num">∞</div><div class="l-stat-label">Entries</div></div>
+        <div><div class="l-stat-num">100%</div><div class="l-stat-label">Secure</div></div>
+      </div>
+    </div>
+    <div class="l-right">
+      <div>
+        <h2 class="l-title">Sign In</h2>
+        <p class="l-subtitle">Access your professional account</p>
+      </div>
+      <div class="auth-tabs">
+        <div class="a-tab active" id="tab-login" onclick="switchTab('login')">Login</div>
+        <div class="a-tab" id="tab-register" onclick="switchTab('register')">Register</div>
+      </div>
+      <form class="l-form" id="auth-form" onsubmit="handleAuth(event)">
+        <div class="form-group">
+          <div class="li-wrap">
+            <span class="li-icon">👤</span>
+            <input type="text" id="inp-user" class="l-input" placeholder="Username" required autocomplete="username">
+          </div>
+        </div>
+        <div class="form-group">
+          <div class="li-wrap">
+            <span class="li-icon">🔐</span>
+            <input type="password" id="inp-pass" class="l-input" placeholder="Password" required autocomplete="current-password">
+          </div>
+        </div>
+        <button type="submit" class="l-btn" id="auth-btn">
+          <span id="btn-txt">Login</span>
+        </button>
+      </form>
+      <footer class="app-footer" style="padding: 20px 0; margin-top: 20px; border-top: 1px solid rgba(74, 32, 16, 0.05); background: transparent;">
+        <div class="footer-text">© 2024 Smart Expense Tracker Pro</div>
+        <div class="footer-tag">Premium Financial Management</div>
+      </footer>
+    </div>
+  </div>
+</div>
+
+<div id="toasts"></div>
+<script src="/app.js"></script>
+<script>
+  window.location.href = '/dashboard.html';
+  initPage('login');
+  if (getToken()) window.location.href = '/dashboard.html';
+  let curTab = 'login';
+
+  function switchTab(tab) {
+    curTab = tab;
+    document.querySelectorAll('.a-tab').forEach(el => el.classList.remove('active'));
+    document.getElementById('tab-' + tab).classList.add('active');
+    document.getElementById('btn-txt').textContent = tab === 'login' ? 'Login' : 'Create Account';
+    document.getElementById('foot-txt').textContent = tab === 'login' ? 'New to Smart Expense? ' : 'Have an account? ';
+    document.querySelector('.l-title').textContent  = tab === 'login' ? 'Sign In' : 'Join Us';
+  }
+
+  async function handleAuth(e) {
+    e.preventDefault();
+    const username = document.getElementById('inp-user').value.trim();
+    const password = document.getElementById('inp-pass').value;
+    if (!username || !password) { showToast('Please fill all fields', 'error'); return; }
+    const btn = document.getElementById('auth-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<div class="spinner"></div><span>Authenticating...</span>';
+    const res = await api.post(curTab === 'login' ? '/api/login' : '/api/register', { username, password });
+    btn.disabled = false;
+    btn.innerHTML = `<span id="btn-txt">${curTab==='login'?'Login':'Create Account'}</span>`;
+    if (res.success) {
+      setAuth(res.token, res.username, res.userId);
+      showToast('Welcome back, ' + res.username + '!', 'success');
+      setTimeout(() => window.location.href = '/dashboard.html', 800);
+    } else {
+      showToast(res.message || 'Auth failed', 'error');
+    }
+  }
+</script>
+</body>
+</html>

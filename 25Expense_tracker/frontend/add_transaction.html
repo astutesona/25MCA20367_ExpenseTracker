@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Add Record — Smart Expense Tracker</title>
+<link rel="stylesheet" href="/styles.css">
+<style>
+html,body{height:100%;overflow:hidden;}
+.form-card { max-width:640px; margin:0 auto; padding: 32px; }
+.amount-inp-wrapper { position: relative; }
+.amount-sym {
+  position: absolute; left: 18px; top: 50%; transform: translateY(-50%);
+  font-size: 24px; font-weight: 800; color: var(--choc-800); pointer-events: none;
+}
+#inp-amount {
+  padding-left: 48px !important; font-size: 32px; font-weight: 800; height: 72px;
+  font-family: 'Space Grotesk', sans-serif; color: var(--choc-800);
+}
+</style>
+</head>
+<body>
+<div class="app-layout">
+  <div id="sidebar-root"></div>
+  <main class="main-content">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">Add Transaction</div>
+        <div class="topbar-sub">Enter transaction details to update your financial records</div>
+      </div>
+      <div class="topbar-actions">
+        <a href="/dashboard.html" class="btn btn-ghost btn-sm">← Back to Overview</a>
+      </div>
+    </div>
+
+    <div class="page-content">
+      <div class="form-card card fade-in-up s1">
+        <div class="form-group">
+          <label class="form-label">Transaction Type</label>
+          <div class="type-toggle">
+            <button type="button" class="type-btn active expense" id="btn-expense" onclick="setType('expense')">📉 Expense</button>
+            <button type="button" class="type-btn income" id="btn-income" onclick="setType('income')">📈 Income</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Amount</label>
+          <div class="amount-inp-wrapper">
+            <span class="amount-sym">₹</span>
+            <input type="number" id="inp-amount" class="form-control" placeholder="0.00" min="0.01" step="0.01" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Category</label>
+          <div class="cat-grid" id="cat-grid"></div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          <div class="input-wrapper">
+            <span class="input-ico">📝</span>
+            <input type="text" id="inp-desc" class="form-control" placeholder="e.g., Monthly Rent, Coffee, Grocery..." maxlength="100">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Date</label>
+          <div class="input-wrapper">
+            <span class="input-ico">📅</span>
+            <input type="date" id="inp-date" class="form-control" required>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="flex g12">
+          <button class="btn btn-primary btn-lg w-full" id="submit-btn" onclick="submitTransaction()">
+            <span id="submit-txt">Save Record</span>
+          </button>
+          <button class="btn btn-ghost btn-lg" onclick="clearForm()" title="Reset Form">🔄</button>
+        </div>
+      </div>
+      <footer class="app-footer">
+        <div class="footer-text">© 2024 Smart Expense Tracker</div>
+        <div class="footer-tag">Personal Finance Management System</div>
+      </footer>
+    </div>
+  </main>
+</div>
+
+<div id="toasts"></div>
+<script src="/app.js"></script>
+<script>
+initPage('add');
+
+let selectedType = 'expense';
+let selectedCat  = 'Other';
+
+document.getElementById('inp-date').value = todayISO();
+
+function renderCat() {
+  document.getElementById('cat-grid').innerHTML = CATS.map(c => `
+    <div class="cat-item ${c.name===selectedCat?'selected':''}" id="cat-${c.name}" onclick="selectCat('${c.name}')">
+      <span class="cat-ico">${c.ico}</span>
+      <span>${c.name}</span>
+    </div>
+  `).join('');
+}
+renderCat();
+
+function setType(t) {
+  selectedType = t;
+  document.getElementById('btn-income').classList.toggle('active', t==='income');
+  document.getElementById('btn-expense').classList.toggle('active', t==='expense');
+  document.getElementById('submit-txt').textContent = t==='income' ? 'Save Income' : 'Save Expense';
+}
+
+function selectCat(n) {
+  selectedCat = n;
+  document.querySelectorAll('.cat-item').forEach(el => el.classList.remove('selected'));
+  document.getElementById('cat-' + n).classList.add('selected');
+}
+
+function clearForm() {
+  document.getElementById('inp-amount').value = '';
+  document.getElementById('inp-desc').value = '';
+  document.getElementById('inp-date').value = todayISO();
+  selectedCat = 'Other'; renderCat();
+}
+
+async function submitTransaction() {
+  const amount = parseFloat(document.getElementById('inp-amount').value);
+  const date   = document.getElementById('inp-date').value;
+  const desc   = document.getElementById('inp-desc').value.trim();
+  if (!amount || amount <= 0) { showToast('Enter valid amount', 'error'); return; }
+  if (!date)                  { showToast('Select a date', 'error'); return; }
+
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div><span>Saving...</span>';
+
+  try {
+    const res = await api.post('/api/transactions', {
+      type: selectedType, amount, category: selectedCat, description: desc, date
+    });
+    btn.disabled = false;
+    btn.innerHTML = `<span id="submit-txt">Save Record</span>`;
+    if (res.success) {
+      showToast('Record saved successfully! 🍫', 'success');
+      setTimeout(clearForm, 1000);
+    } else {
+      showToast(res.message || 'Failed to save', 'error');
+    }
+  } catch(e) {
+    btn.disabled = false;
+    btn.innerHTML = `<span id="submit-txt">Save Record</span>`;
+    showToast('Network error', 'error');
+  }
+}
+</script>
+</body>
+</html>
